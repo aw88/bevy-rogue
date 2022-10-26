@@ -4,10 +4,13 @@ use leafwing_input_manager::{
     errors::NearlySingularConversion, orientation::Direction, prelude::*,
 };
 
-fn main() {
-    App::new()
-        .insert_resource(WindowDescriptor {
-            title: "Rusty Roguelike".to_string(),
+pub const LAUNCHER_TITLE: &str = "bevy-rogue";
+
+pub fn app() -> App {
+    let mut app = App::new();
+
+    app.insert_resource(WindowDescriptor {
+            title: LAUNCHER_TITLE.to_string(),
             ..default()
         })
         .insert_resource(ImageSettings::default_nearest())
@@ -20,8 +23,9 @@ fn main() {
         .add_startup_system(setup_sprites)
         .add_startup_system(spawn_player)
         .add_event::<PlayerWalk>()
-        .add_system(player_walks)
-        .run();
+        .add_system(player_walks);
+
+    app
 }
 
 #[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug)]

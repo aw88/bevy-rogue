@@ -1,0 +1,12 @@
+[build]
+# The index HTML file to drive the bundling process.
+target = "launchers/wasm/index.html"
+
+[watch]
+# Watch top level dir (all crates)
+watch = ["src", "launchers/wasm/src", "launchers/wasm/index.html"]
+
+[[hooks]]
+stage = "pre_build"
+command = "cp"
+command_arguments = ["-r", "assets", "launchers/wasm/"]
