@@ -1,4 +1,4 @@
-# rusty-roguelike
+# bevy-rogue
 
 ## Acknowledgements
 
