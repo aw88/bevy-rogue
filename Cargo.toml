@@ -1,0 +1,9 @@
+[package]
+name = "rogue"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.8.1"
+bevy_ecs_tilemap = "0.8"
+leafwing-input-manager = "0.6.1"
