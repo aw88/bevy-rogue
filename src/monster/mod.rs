@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::Walkable;
+use crate::Moveable;
 
 #[derive(Component)]
 pub struct Monster;
@@ -32,6 +32,6 @@ pub fn spawn_monsters(
                 ..default()
             })
             .insert(Monster)
-            .insert(Walkable);
+            .insert(Moveable);
     }
 }

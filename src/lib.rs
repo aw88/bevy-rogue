@@ -5,7 +5,10 @@ use leafwing_input_manager::{
 };
 
 mod monster;
+mod movement;
+
 use crate::monster::*;
+use crate::movement::*;
 
 pub const LAUNCHER_TITLE: &str = "bevy-rogue";
 
@@ -13,21 +16,20 @@ pub fn app() -> App {
     let mut app = App::new();
 
     app.insert_resource(WindowDescriptor {
-            title: LAUNCHER_TITLE.to_string(),
-            ..default()
-        })
-        .insert_resource(ImageSettings::default_nearest())
-        .add_plugins(DefaultPlugins)
-        .add_plugin(bevy::input::InputPlugin)
-        .add_plugin(InputManagerPlugin::<PlayerAction>::default())
-        .add_plugin(TilemapPlugin)
-        .add_startup_system(setup)
-        .add_startup_system(setup_tiles)
-        .add_startup_system(spawn_monsters)
-        .add_startup_system(spawn_player)
-        .add_event::<WalkEvent>()
-        .add_system(player_input)
-        .add_system(move_entities);
+        title: LAUNCHER_TITLE.to_string(),
+        ..default()
+    })
+    .insert_resource(ImageSettings::default_nearest())
+    .add_plugins(DefaultPlugins)
+    .add_plugin(bevy::input::InputPlugin)
+    .add_plugin(InputManagerPlugin::<PlayerAction>::default())
+    .add_plugin(TilemapPlugin)
+    .add_plugin(MovePlugin)
+    .add_startup_system(setup)
+    .add_startup_system(setup_tiles)
+    .add_startup_system(spawn_monsters)
+    .add_startup_system(spawn_player)
+    .add_system(player_input);
 
     app
 }
@@ -136,13 +138,10 @@ fn setup_tiles(mut commands: Commands, asset_server: Res<AssetServer>) {
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Component)]
-pub struct Walkable;
-
 #[derive(Bundle)]
 struct PlayerBundle {
     player: Player,
-    walkable: Walkable,
+    walkable: Moveable,
     #[bundle]
     input_manager: InputManagerBundle<PlayerAction>,
 }
@@ -176,11 +175,11 @@ impl Default for PlayerBundle {
     fn default() -> Self {
         Self {
             player: Player,
-            walkable: Walkable,
+            walkable: Moveable,
             input_manager: InputManagerBundle {
                 input_map: PlayerBundle::default_input_map(),
                 ..default()
-            }
+            },
         }
     }
 }
@@ -207,16 +206,9 @@ fn spawn_player(
         });
 }
 
-#[derive(Debug)]
-pub struct WalkEvent {
-    pub target: Entity,
-    pub direction: Direction,
-}
-
 fn player_input(
     query: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
-    monsters: Query<Entity, (With<Monster>, With<Walkable>)>,
-    mut event_writer: EventWriter<WalkEvent>,
+    mut event_writer: EventWriter<MoveEvent>,
 ) {
     let (e, action_state) = query.single();
 
@@ -233,21 +225,9 @@ fn player_input(
     let net_direction: Result<Direction, NearlySingularConversion> = direction_vector.try_into();
 
     if let Ok(direction) = net_direction {
-        event_writer.send(WalkEvent { target: e, direction });
-
-        for monster in monsters.iter() {
-            event_writer.send(WalkEvent { target: monster, direction });
-        }
-    }
-}
-
-fn move_entities(
-    mut query: Query<&mut Transform, With<Walkable>>,
-    mut event_reader: EventReader<WalkEvent>,
-) {
-    for event in event_reader.iter() {
-        if let Ok(mut transform) = query.get_mut(event.target) {
-            transform.translation += (event.direction * 16.0).extend(0.0);
-        }
+        event_writer.send(MoveEvent {
+            target: e,
+            direction,
+        });
     }
 }
