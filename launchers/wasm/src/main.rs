@@ -19,11 +19,16 @@ fn set_global_css() {
         html {
             min-height: 100%;
             position: relative;
+            background: #0f0908;
         }
         body {
             height: 100%;
+            height: 100vh;
             padding: 0;
             margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         "#
     }

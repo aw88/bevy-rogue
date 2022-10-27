@@ -74,12 +74,12 @@ fn setup_sprites(
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     let sprites = [
-        (97, Transform::from_xyz(0.0, 0.0, 1.0)),
+        (97, Transform::from_xyz(-16.0, -16.0, 1.0)),
         (110, Transform::from_xyz(32.0, 48.0, 1.0)),
         (110, Transform::from_xyz(-64.0, 16.0, 1.0)),
         (123, Transform::from_xyz(16.0, -72.0, 1.0)),
     ];
-
+    info!("Hello");
     for (sprite_index, transform) in sprites.iter() {
         commands.spawn_bundle(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle.clone(),
@@ -222,7 +222,7 @@ fn player_walks(
     let net_direction: Result<Direction, NearlySingularConversion> = direction_vector.try_into();
 
     if let Ok(direction) = net_direction {
-        println!("PlayerWalk({direction:?})");
+        info!("PlayerWalk({direction:?})");
         event_writer.send(PlayerWalk { direction });
     }
 }
