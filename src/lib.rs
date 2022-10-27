@@ -4,6 +4,9 @@ use leafwing_input_manager::{
     errors::NearlySingularConversion, orientation::Direction, prelude::*,
 };
 
+mod monster;
+use crate::monster::*;
+
 pub const LAUNCHER_TITLE: &str = "bevy-rogue";
 
 pub fn app() -> App {
@@ -20,10 +23,11 @@ pub fn app() -> App {
         .add_plugin(TilemapPlugin)
         .add_startup_system(setup)
         .add_startup_system(setup_tiles)
-        .add_startup_system(setup_sprites)
+        .add_startup_system(spawn_monsters)
         .add_startup_system(spawn_player)
-        .add_event::<PlayerWalk>()
-        .add_system(player_walks);
+        .add_event::<WalkEvent>()
+        .add_system(player_input)
+        .add_system(move_entities);
 
     app
 }
@@ -62,35 +66,6 @@ fn setup(mut commands: Commands) {
         },
         ..default()
     });
-}
-
-fn setup_sprites(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-) {
-    let texture_handle = asset_server.load("tiles/tilemap_packed.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
-
-    let sprites = [
-        (97, Transform::from_xyz(-16.0, -16.0, 1.0)),
-        (110, Transform::from_xyz(32.0, 48.0, 1.0)),
-        (110, Transform::from_xyz(-64.0, 16.0, 1.0)),
-        (123, Transform::from_xyz(16.0, -72.0, 1.0)),
-    ];
-    info!("Hello");
-    for (sprite_index, transform) in sprites.iter() {
-        commands.spawn_bundle(SpriteSheetBundle {
-            texture_atlas: texture_atlas_handle.clone(),
-            sprite: TextureAtlasSprite {
-                index: *sprite_index,
-                ..default()
-            },
-            transform: *transform,
-            ..default()
-        });
-    }
 }
 
 fn setup_tiles(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -161,9 +136,13 @@ fn setup_tiles(mut commands: Commands, asset_server: Res<AssetServer>) {
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct Walkable;
+
 #[derive(Bundle)]
 struct PlayerBundle {
     player: Player,
+    walkable: Walkable,
     #[bundle]
     input_manager: InputManagerBundle<PlayerAction>,
 }
@@ -189,30 +168,58 @@ impl PlayerBundle {
     }
 }
 
-fn spawn_player(mut commands: Commands) {
-    commands.spawn_bundle(PlayerBundle {
-        player: Player,
-        input_manager: InputManagerBundle {
-            input_map: PlayerBundle::default_input_map(),
-            ..default()
-        },
-    });
+impl Default for PlayerBundle {
+    fn default() -> Self {
+        Self {
+            player: Player,
+            walkable: Walkable,
+            input_manager: InputManagerBundle {
+                input_map: PlayerBundle::default_input_map(),
+                ..default()
+            }
+        }
+    }
 }
 
-pub struct PlayerWalk {
+fn spawn_player(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
+    let texture_handle = asset_server.load("tiles/tilemap_packed.png");
+    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+    commands
+        .spawn_bundle(PlayerBundle::default())
+        .insert_bundle(SpriteSheetBundle {
+            texture_atlas: texture_atlas_handle.clone(),
+            sprite: TextureAtlasSprite {
+                index: 97,
+                ..default()
+            },
+            transform: Transform::from_xyz(-16.0, -16.0, 1.0),
+            ..default()
+        });
+}
+
+#[derive(Debug)]
+pub struct WalkEvent {
+    pub target: Entity,
     pub direction: Direction,
 }
 
-fn player_walks(
-    query: Query<&ActionState<PlayerAction>, With<Player>>,
-    mut event_writer: EventWriter<PlayerWalk>,
+fn player_input(
+    query: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
+    monsters: Query<Entity, (With<Monster>, With<Walkable>)>,
+    mut event_writer: EventWriter<WalkEvent>,
 ) {
-    let action_state = query.single();
+    let (e, action_state) = query.single();
 
     let mut direction_vector = Vec2::ZERO;
 
     for input_direction in PlayerAction::DIRECTIONS {
-        if action_state.pressed(input_direction) {
+        if action_state.just_pressed(input_direction) {
             if let Some(direction) = input_direction.direction() {
                 direction_vector += Vec2::from(direction);
             }
@@ -222,7 +229,21 @@ fn player_walks(
     let net_direction: Result<Direction, NearlySingularConversion> = direction_vector.try_into();
 
     if let Ok(direction) = net_direction {
-        info!("PlayerWalk({direction:?})");
-        event_writer.send(PlayerWalk { direction });
+        event_writer.send(WalkEvent { target: e, direction });
+
+        for monster in monsters.iter() {
+            event_writer.send(WalkEvent { target: monster, direction });
+        }
+    }
+}
+
+fn move_entities(
+    mut query: Query<&mut Transform, With<Walkable>>,
+    mut event_reader: EventReader<WalkEvent>,
+) {
+    for event in event_reader.iter() {
+        if let Ok(mut transform) = query.get_mut(event.target) {
+            transform.translation += (event.direction * 16.0).extend(0.0);
+        }
     }
 }
