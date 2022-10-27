@@ -153,15 +153,19 @@ impl PlayerBundle {
         let mut input_map = InputMap::default();
 
         input_map.insert(KeyCode::Up, Up);
+        input_map.insert(KeyCode::W, Up);
         input_map.insert(GamepadButtonType::DPadUp, Up);
 
         input_map.insert(KeyCode::Down, Down);
+        input_map.insert(KeyCode::S, Down);
         input_map.insert(GamepadButtonType::DPadDown, Down);
 
         input_map.insert(KeyCode::Left, Left);
+        input_map.insert(KeyCode::A, Left);
         input_map.insert(GamepadButtonType::DPadLeft, Left);
 
         input_map.insert(KeyCode::Right, Right);
+        input_map.insert(KeyCode::D, Right);
         input_map.insert(GamepadButtonType::DPadRight, Right);
 
         input_map
