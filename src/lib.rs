@@ -1,4 +1,5 @@
 use bevy::{prelude::*, render::texture::ImageSettings};
+use bevy_easings::{ EasingComponent, EasingsPlugin };
 use bevy_ecs_tilemap::prelude::*;
 use leafwing_input_manager::{
     errors::NearlySingularConversion, orientation::Direction, prelude::*,
@@ -25,6 +26,7 @@ pub fn app() -> App {
     .add_plugin(InputManagerPlugin::<PlayerAction>::default())
     .add_plugin(TilemapPlugin)
     .add_plugin(MovePlugin)
+    .add_plugin(EasingsPlugin)
     .add_startup_system(setup)
     .add_startup_system(setup_tiles)
     .add_startup_system(spawn_monsters)
@@ -207,27 +209,31 @@ fn spawn_player(
 }
 
 fn player_input(
-    query: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
+    query: Query<
+        (Entity, &ActionState<PlayerAction>),
+        (With<Player>, Without<EasingComponent<Transform>>),
+    >,
     mut event_writer: EventWriter<MoveEvent>,
 ) {
-    let (e, action_state) = query.single();
+    if let Ok((e, action_state)) = query.get_single() {
+        let mut direction_vector = Vec2::ZERO;
 
-    let mut direction_vector = Vec2::ZERO;
-
-    for input_direction in PlayerAction::DIRECTIONS {
-        if action_state.just_pressed(input_direction) {
-            if let Some(direction) = input_direction.direction() {
-                direction_vector += Vec2::from(direction);
+        for input_direction in PlayerAction::DIRECTIONS {
+            if action_state.just_pressed(input_direction) {
+                if let Some(direction) = input_direction.direction() {
+                    direction_vector += Vec2::from(direction);
+                }
             }
         }
-    }
 
-    let net_direction: Result<Direction, NearlySingularConversion> = direction_vector.try_into();
+        let net_direction: Result<Direction, NearlySingularConversion> =
+            direction_vector.try_into();
 
-    if let Ok(direction) = net_direction {
-        event_writer.send(MoveEvent {
-            target: e,
-            direction,
-        });
+        if let Ok(direction) = net_direction {
+            event_writer.send(MoveEvent {
+                target: e,
+                direction,
+            });
+        }
     }
 }
