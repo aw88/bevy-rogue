@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TilePos;
 
 use crate::Moveable;
 
@@ -15,9 +16,9 @@ pub fn spawn_monsters(
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     let sprites = [
-        (110, Transform::from_xyz(32.0, 48.0, 1.0)),
-        (110, Transform::from_xyz(-64.0, 16.0, 1.0)),
-        (123, Transform::from_xyz(16.0, -72.0, 1.0)),
+        (110, Transform::from_xyz(160.0, 128.0, 1.0)),
+        (110, Transform::from_xyz(64.0, 96.0, 1.0)),
+        (123, Transform::from_xyz(96.0, 64.0, 1.0)),
     ];
 
     for (sprite_index, transform) in sprites.iter() {
@@ -32,6 +33,6 @@ pub fn spawn_monsters(
                 ..default()
             })
             .insert(Monster)
-            .insert(Moveable);
+            .insert(Moveable { tile_pos: TilePos { x: 0, y: 0 }});
     }
 }

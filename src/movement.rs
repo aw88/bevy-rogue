@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use bevy_easings::*;
+use bevy_ecs_tilemap::prelude::TilePos;
 use leafwing_input_manager::orientation::Direction;
 
 #[derive(Component)]
-pub struct Moveable;
+pub struct Moveable {
+    pub tile_pos: TilePos,
+}
 
 pub struct MoveEvent {
     pub target: Entity,
@@ -22,11 +25,17 @@ impl Plugin for MovePlugin {
 
 fn move_entities(
     mut commands: Commands,
-    mut query: Query<&Transform, With<Moveable>>,
+    mut moveable_entity_query: Query<(&Transform, &mut Moveable)>,
     mut event_reader: EventReader<MoveEvent>,
 ) {
     for event in event_reader.iter() {
-        if let Ok(transform) = query.get_mut(event.target) {
+        if let Ok((transform, mut moveable)) = moveable_entity_query.get_mut(event.target) {
+            let unit_vector = event.direction.unit_vector();
+            let tile_x = (moveable.tile_pos.x as f32 + unit_vector.x) as u32;
+            let tile_y = (moveable.tile_pos.y as f32 + unit_vector.y) as u32;
+            
+            moveable.tile_pos = TilePos { x: tile_x, y: tile_y };
+
             commands
                 .entity(event.target)
                 .insert(transform.ease_to(

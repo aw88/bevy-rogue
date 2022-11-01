@@ -1,5 +1,5 @@
 use bevy::{prelude::*, render::texture::ImageSettings};
-use bevy_easings::{ EasingComponent, EasingsPlugin };
+use bevy_easings::{EasingComponent, EasingsPlugin};
 use bevy_ecs_tilemap::prelude::*;
 use leafwing_input_manager::{
     errors::NearlySingularConversion, orientation::Direction, prelude::*,
@@ -162,7 +162,6 @@ fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: R
             storage: tile_storage,
             texture: TilemapTexture::Single(texture_handle),
             tile_size,
-            transform: get_tilemap_center_transform(&tilemap_size, &grid_size, 0.0),
             ..default()
         });
 }
@@ -176,6 +175,7 @@ struct PlayerBundle {
     walkable: Moveable,
     #[bundle]
     input_manager: InputManagerBundle<PlayerAction>,
+    transform: Transform,
 }
 
 impl PlayerBundle {
@@ -207,11 +207,14 @@ impl Default for PlayerBundle {
     fn default() -> Self {
         Self {
             player: Player,
-            walkable: Moveable,
+            walkable: Moveable {
+                tile_pos: TilePos { x: 2, y: 2 },
+            },
             input_manager: InputManagerBundle {
                 input_map: PlayerBundle::default_input_map(),
                 ..default()
             },
+            transform: Transform::from_xyz(32.0, 32.0, 1.0),
         }
     }
 }
@@ -226,26 +229,26 @@ fn spawn_player(
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     commands
-        .spawn_bundle(PlayerBundle::default())
-        .insert_bundle(SpriteSheetBundle {
+        .spawn_bundle(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle.clone(),
             sprite: TextureAtlasSprite {
                 index: 97,
                 ..default()
             },
-            transform: Transform::from_xyz(-16.0, -16.0, 1.0),
             ..default()
-        });
+        })
+        .insert_bundle(PlayerBundle::default());
 }
 
 fn player_input(
     query: Query<
-        (Entity, &ActionState<PlayerAction>),
+        (Entity, &Moveable, &ActionState<PlayerAction>),
         (With<Player>, Without<EasingComponent<Transform>>),
     >,
+    rogue_map: Res<RogueMap>,
     mut event_writer: EventWriter<MoveEvent>,
 ) {
-    if let Ok((e, action_state)) = query.get_single() {
+    if let Ok((e, moveable, action_state)) = query.get_single() {
         let mut direction_vector = Vec2::ZERO;
 
         for input_direction in PlayerAction::DIRECTIONS {
@@ -260,10 +263,22 @@ fn player_input(
             direction_vector.try_into();
 
         if let Ok(direction) = net_direction {
-            event_writer.send(MoveEvent {
-                target: e,
-                direction,
-            });
+            if player_can_move(moveable.tile_pos.clone(), direction, rogue_map) {
+                event_writer.send(MoveEvent {
+                    target: e,
+                    direction,
+                });
+            }
         }
     }
+}
+
+fn player_can_move(tile_pos: TilePos, direction: Direction, rogue_map: Res<RogueMap>) -> bool {
+    let unit_vector = direction.unit_vector();
+    let tile_x = (tile_pos.x as f32 + unit_vector.x) as u32;
+    let tile_y = (tile_pos.y as f32 + unit_vector.y) as u32;
+
+    let collision_tile = rogue_map.tiles_collision[tile_y as usize][tile_x as usize];
+
+    collision_tile == 0
 }
