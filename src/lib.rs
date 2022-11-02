@@ -43,7 +43,7 @@ struct RogueMap {
 }
 
 impl FromWorld for RogueMap {
-    fn from_world(world: &mut World) -> Self {
+    fn from_world(_world: &mut World) -> Self {
         Self {
             tiles: [
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
