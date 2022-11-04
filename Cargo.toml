@@ -21,6 +21,7 @@ lto = true
 
 [dependencies]
 bevy = "0.8.1"
+bevy_easings = "0.8.1"
 bevy_ecs_tilemap = { version = "0.8", features = ["atlas"] }
 leafwing-input-manager = "0.6.1"
 image = "0.24.4"
