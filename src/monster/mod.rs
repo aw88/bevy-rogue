@@ -12,7 +12,7 @@ pub fn spawn_monsters(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let texture_handle = asset_server.load("tiles/tilemap_packed.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12);
+    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     let sprites = [
@@ -23,7 +23,7 @@ pub fn spawn_monsters(
 
     for (sprite_index, transform) in sprites.iter() {
         commands
-            .spawn_bundle(SpriteSheetBundle {
+            .spawn(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle.clone(),
                 sprite: TextureAtlasSprite {
                     index: *sprite_index,
