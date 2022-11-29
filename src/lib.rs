@@ -40,6 +40,8 @@ pub fn app() -> App {
 struct RogueMap {
     tiles: [[u32; 16]; 16],
     tiles_collision: [[u32; 16]; 16],
+    map_size: UVec2,
+    tile_size: Vec2,
 }
 
 impl FromWorld for RogueMap {
@@ -81,6 +83,8 @@ impl FromWorld for RogueMap {
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             ],
+            map_size: UVec2 { x: 16, y: 16 },
+            tile_size: Vec2 { x: 16., y: 16. },
         }
     }
 }
@@ -111,12 +115,20 @@ impl PlayerAction {
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    rogue_map: Res<RogueMap>,
+) {
     commands.spawn_bundle(Camera2dBundle {
         projection: OrthographicProjection {
             scale: 1.0 / 2.0,
             ..default()
         },
+        transform: Transform::from_xyz(
+            (rogue_map.map_size.x as f32 * rogue_map.tile_size.x) * 0.5, 
+            (rogue_map.map_size.y as f32 * rogue_map.tile_size.y) * 0.5,
+            1.
+        ),
         ..default()
     });
 }
@@ -124,7 +136,7 @@ fn setup(mut commands: Commands) {
 fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: Res<AssetServer>) {
     let texture_handle: Handle<Image> = asset_server.load("tiles/tilemap_packed.png");
 
-    let tilemap_size = TilemapSize { x: 16, y: 16 };
+    let tilemap_size = TilemapSize { x: rogue_map.map_size.x, y: rogue_map.map_size.y };
 
     let tilemap_entity = commands.spawn().id();
     let mut tile_storage = TileStorage::empty(tilemap_size);
@@ -151,7 +163,7 @@ fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: R
         }
     }
 
-    let tile_size = TilemapTileSize { x: 16.0, y: 16.0 };
+    let tile_size = TilemapTileSize { x: rogue_map.tile_size.x, y: rogue_map.tile_size.y };
     let grid_size = tile_size.into();
 
     commands
