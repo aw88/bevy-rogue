@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::texture::ImageSettings};
+use bevy::prelude::*;
 use bevy_easings::{EasingComponent, EasingsPlugin};
 use bevy_ecs_tilemap::prelude::*;
 use leafwing_input_manager::{
@@ -16,27 +16,32 @@ pub const LAUNCHER_TITLE: &str = "bevy-rogue";
 pub fn app() -> App {
     let mut app = App::new();
 
-    app.insert_resource(WindowDescriptor {
-        title: LAUNCHER_TITLE.to_string(),
-        ..default()
-    })
-    .init_resource::<RogueMap>()
-    .insert_resource(ImageSettings::default_nearest())
-    .add_plugins(DefaultPlugins)
-    .add_plugin(bevy::input::InputPlugin)
-    .add_plugin(InputManagerPlugin::<PlayerAction>::default())
-    .add_plugin(TilemapPlugin)
-    .add_plugin(MovePlugin)
-    .add_plugin(EasingsPlugin)
-    .add_startup_system(setup)
-    .add_startup_system(setup_tiles)
-    .add_startup_system(spawn_monsters)
-    .add_startup_system(spawn_player)
-    .add_system(player_input);
+    app.init_resource::<RogueMap>()
+        .add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        title: LAUNCHER_TITLE.to_string(),
+                        ..default()
+                    },
+                    ..default()
+                }),
+        )
+        .add_plugin(InputManagerPlugin::<PlayerAction>::default())
+        .add_plugin(TilemapPlugin)
+        .add_plugin(MovePlugin)
+        .add_plugin(EasingsPlugin)
+        .add_startup_system(setup)
+        .add_startup_system(setup_tiles)
+        .add_startup_system(spawn_monsters)
+        .add_startup_system(spawn_player)
+        .add_system(player_input);
 
     app
 }
 
+#[derive(Resource)]
 struct RogueMap {
     tiles: Vec<Vec<u32>>,
     tiles_collision: Vec<Vec<u32>>,
@@ -115,19 +120,16 @@ impl PlayerAction {
     }
 }
 
-fn setup(
-    mut commands: Commands,
-    rogue_map: Res<RogueMap>,
-) {
-    commands.spawn_bundle(Camera2dBundle {
+fn setup(mut commands: Commands, rogue_map: Res<RogueMap>) {
+    commands.spawn(Camera2dBundle {
         projection: OrthographicProjection {
             scale: 1.0 / 2.0,
             ..default()
         },
         transform: Transform::from_xyz(
-            (rogue_map.map_size.x as f32 * rogue_map.tile_size.x) * 0.5, 
+            (rogue_map.map_size.x as f32 * rogue_map.tile_size.x) * 0.5,
             (rogue_map.map_size.y as f32 * rogue_map.tile_size.y) * 0.5,
-            1.
+            1.,
         ),
         ..default()
     });
@@ -136,9 +138,12 @@ fn setup(
 fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: Res<AssetServer>) {
     let texture_handle: Handle<Image> = asset_server.load("tiles/tilemap_packed.png");
 
-    let tilemap_size = TilemapSize { x: rogue_map.map_size.x, y: rogue_map.map_size.y };
+    let tilemap_size = TilemapSize {
+        x: rogue_map.map_size.x,
+        y: rogue_map.map_size.y,
+    };
 
-    let tilemap_entity = commands.spawn().id();
+    let tilemap_entity = commands.spawn_empty().id();
     let mut tile_storage = TileStorage::empty(tilemap_size);
 
     for x in 0..tilemap_size.x {
@@ -146,11 +151,10 @@ fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: R
             let tile_id = rogue_map.tiles[15 - y as usize][x as usize];
             let tile_pos = TilePos { x, y };
             let tile_entity = commands
-                .spawn()
-                .insert_bundle(TileBundle {
+                .spawn(TileBundle {
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
-                    texture: TileTexture(tile_id),
+                    texture_index: TileTextureIndex(tile_id),
                     flip: TileFlip {
                         x: x == 13 && tile_id == 50,
                         d: x == 13 && tile_id == 50,
@@ -163,19 +167,20 @@ fn setup_tiles(mut commands: Commands, rogue_map: Res<RogueMap>, asset_server: R
         }
     }
 
-    let tile_size = TilemapTileSize { x: rogue_map.tile_size.x, y: rogue_map.tile_size.y };
+    let tile_size = TilemapTileSize {
+        x: rogue_map.tile_size.x,
+        y: rogue_map.tile_size.y,
+    };
     let grid_size = tile_size.into();
 
-    commands
-        .entity(tilemap_entity)
-        .insert_bundle(TilemapBundle {
-            grid_size,
-            size: tilemap_size,
-            storage: tile_storage,
-            texture: TilemapTexture::Single(texture_handle),
-            tile_size,
-            ..default()
-        });
+    commands.entity(tilemap_entity).insert(TilemapBundle {
+        grid_size,
+        size: tilemap_size,
+        storage: tile_storage,
+        texture: TilemapTexture::Single(texture_handle),
+        tile_size,
+        ..default()
+    });
 }
 
 #[derive(Component)]
@@ -237,11 +242,12 @@ fn spawn_player(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let texture_handle = asset_server.load("tiles/tilemap_packed.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12);
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 12, 12, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle.clone(),
             sprite: TextureAtlasSprite {
                 index: 97,
@@ -249,7 +255,8 @@ fn spawn_player(
             },
             ..default()
         })
-        .insert_bundle(PlayerBundle::default());
+        .remove::<Transform>()
+        .insert(PlayerBundle::default());
 }
 
 fn player_input(
